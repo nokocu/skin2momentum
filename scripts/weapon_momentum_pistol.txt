@@ -1,0 +1,67 @@
+WeaponData
+{
+    "CrosshairMinDistance"      "8"
+    "CrosshairDeltaDistance"    "3"
+    "BuiltRightHanded"          "1"
+    "PlayerAnimationExtension"	"pistol"
+    
+    // Weapon data is loaded by both the Game and Client DLLs.
+    "printname"         "#MOM_Weapon_Pistol"
+    "anim_prefix"       "anim"
+    "bucket"            "1"
+    "bucket_position"   "0"
+
+    "clip_size"         "20"
+    "weight"            "5"
+
+	"attach_to_hands"   "1"
+
+    "ModelData"
+    {
+        "view"      "models/weapons/v_pist_usp.mdl"
+        "spawner"   "models/weapons/mom_pistol/w_mom_pistol.mdl"
+        "spawner"   "models/weapons/mom_pistol/w_mom_pistol.mdl"
+    }
+
+    // Sounds for the weapon.
+    SoundData
+    {
+        Overrides
+        {
+
+        }
+    }
+
+    // Weapon Sprite data is loaded by the Client DLL.
+    TextureData
+    {
+        "weapon"
+        {
+                "font"      "WeaponIcons"
+                "character" "p"
+        }
+        "weapon_s"
+        {   
+                "font"      "WeaponIconsSelected"
+                "character" "p"
+        }
+        "weapon_small"
+        {
+                "font"      "WeaponIconsSmall"
+                "character" "p"
+        }
+        "ammo"
+        {
+                "font"      "WeaponIconsSmall"
+                "character" "p"
+        }
+        "crosshair"
+        {
+                "file"      "sprites/crosshairs"
+                "x"         "0"
+                "y"         "48"
+                "width"     "24"
+                "height"    "24"
+        }
+    }
+}

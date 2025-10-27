@@ -19,13 +19,23 @@ class Converter:
         self.data_dir = Path(args.data).resolve()
         self.game_dir = Path(args.game).resolve()
         self.output_dir = Path(args.output).resolve() / "models" / "weapons"
-        self.model_name = args.name
+        self.scripts_dir = Path(__file__).parent / "scripts"
+        self.weapon_type = args.type
+        
+        # Model name based on type
+        if self.weapon_type == "knife":
+            self.model_name = "v_knife_t"
+        elif self.weapon_type == "pistol":
+            self.model_name = "v_pistol_usp"
+        else:
+            raise ValueError(f"[init] provided type {self.weapon_type}. Must be 'knife' or 'pistol'")
+        
         self.crowbar = Path(__file__).parent / "thirdparty" / "CrowbarDecompiler(1.1).exe"
         self.studiomdl = self.game_dir / "bin" / "win64" / "studiomdl.exe"
         self.gameinfo = self.game_dir / "momentum" / "gameinfo.txt"
-        self.weapon_model = self.data_dir / "models" / "weapons" / args.weapon
-        self.weapon_anim = self.data_dir / "models" / "weapons" / args.weapon.replace('.mdl', '_anim.mdl')
-        self.glove_model = self.data_dir / "models" / "weapons" / args.glove
+        self.weapon_model = self.data_dir / args.weapon
+        self.weapon_anim = self.data_dir / args.weapon.replace('.mdl', '_anim.mdl')
+        self.glove_model = self.data_dir / args.gloves
 
         required_paths = [
             (self.data_dir, "Data"),
@@ -33,7 +43,8 @@ class Converter:
             (self.crowbar, "Crowbar"),
             (self.studiomdl, "Studiomdl"),
             (self.weapon_model, "Weapon model"),
-            (self.glove_model, "Glove model")
+            (self.glove_model, "Glove model"),
+            (self.scripts_dir, "Scripts")
         ]
         
         for path, description in required_paths:
@@ -206,6 +217,31 @@ class Converter:
             print(f"[compile_model] Compilation error: {e}")
             return False
     
+    def copy_scripts(self):
+        """Copy weapon scripts based on type"""
+        try:
+            scripts_output_dir = Path(self.output_dir).parent.parent / "scripts"
+            scripts_output_dir.mkdir(parents=True, exist_ok=True)
+
+            if self.weapon_type == "knife":
+                source_script = self.scripts_dir / "weapon_momentum_knife.txt"
+                target_script = scripts_output_dir / "weapon_momentum_knife.txt"
+            elif self.weapon_type == "pistol":
+                source_script = self.scripts_dir / "weapon_momentum_pistol.txt"
+                target_script = scripts_output_dir / "weapon_momentum_pistol.txt"
+            else:
+                print(f"[copy_scripts] Unknown weapon type: {self.weapon_type}")
+                return False
+            
+            shutil.copy2(source_script, target_script)
+            
+            print(f"[copy_scripts] Copied: {source_script.name} -> {target_script.name}")
+            return True
+            
+        except Exception as e:
+            print(f"[copy_scripts] Error: {e}")
+            return False
+    
     def main(self):
         """Run conversion"""
         
@@ -253,19 +289,26 @@ class Converter:
             print("\n[main] 5. Compiling")
             success = self.compile_model(final_qc, self.output_dir)
             
+            # Copy scripts
+            if success:
+                print("\n[main] 6. Copying scripts")
+                script_success = self.copy_scripts()
+                if not script_success:
+                    print("[main] Script copying failed")
+            
             print(f"[main] Result: {'SUCCESS' if success else 'FAILED'}")
             return success
 
 def parse_args():
-    """Parse command line arguments"""
+    """Command line"""
     parser = argparse.ArgumentParser()
     
-    parser.add_argument('-data', required=True)
-    parser.add_argument('-game', required=True)
-    parser.add_argument('-output', required=True)
-    parser.add_argument('-weapon', required=True)
-    parser.add_argument('-glove', required=True)
-    parser.add_argument('-name', required=True)
+    parser.add_argument('-data', required=True, help='CS:GO data')
+    parser.add_argument('-game', required=True, help='Momentum directory')
+    parser.add_argument('-output', required=True, help='Output directory')
+    parser.add_argument('-weapon', required=True, help='Weapon model path')
+    parser.add_argument('-gloves', required=True, help='Glove model path')
+    parser.add_argument('-type', required=True, choices=['knife', 'pistol'], help='Knife or Pistol')
 
     return parser.parse_args()
 
@@ -276,7 +319,7 @@ if __name__ == "__main__":
         success = converter.main()
         
         if success:
-            print(f"\n[skin2momentum] Model '{args.name}.mdl' created")
+            print(f"\n[skin2momentum] Model '{converter.model_name}.mdl' created")
         else:
             print(f"\n[skin2momentum] FAIL")
             sys.exit(1)
