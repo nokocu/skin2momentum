@@ -1,0 +1,5 @@
+misc/
+thirdparty/
+__pycache__/
+.venv/
+test/
