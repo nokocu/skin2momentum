@@ -126,7 +126,7 @@ class Converter:
         qc_lines.append('$contents "solid"')
         qc_lines.append('$illumposition 0 0 0')
         
-        # material search paths
+        # TODO: material search paths
         qc_lines.append('$cdmaterials "models/weapons/"')
         qc_lines.append('$cdmaterials "models/weapons/v_models/knife_m9_bay/"')
         qc_lines.append('$cdmaterials "models/weapons/v_models/arms/glove_sporty/"')
@@ -136,31 +136,22 @@ class Converter:
         qc_lines.append('$cdmaterials ""')
         qc_lines.append('')
         
-        # Use only knife bone definitions
+        # Use only knife bone definitions (with bonemerge and bonesaveframe)
         weapon_lines = weapon_qc_content.split('\n')
         for line in weapon_lines:
             line = line.strip()
             if (line.startswith('$definebone') or
                 line.startswith('$attachment') or
                 line.startswith('$bbox') or
-                line.startswith('$cbox')):
+                line.startswith('$cbox') or
+                line.startswith('$bonemerge') or
+                line.startswith('$bonesaveframe')):
                 qc_lines.append(line)
         
         qc_lines.append('')
         
-        # Add animations
-        if anim_qc_path and Path(anim_qc_path).exists():
-            with open(anim_qc_path, 'r', encoding='utf-8') as f:
-                anim_content = f.read()
-            
-            anim_lines = anim_content.split('\n')
-            for line in anim_lines:
-                line = line.strip()
-                if line.startswith('$sequence'):
-                    match = re.search(r'\$sequence\s+"([^"]+)"', line)
-                    if match:
-                        anim_name = match.group(1)
-                        qc_lines.append(f'$sequence "{anim_name}" "{self.model_name}_anims/{anim_name}.smd" fps 30')
+        # Add animations using includemodel
+        qc_lines.append('$includemodel "weapons/v_knife_m9_bay_anim.mdl"')
         
         with open(output_qc_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(qc_lines))
