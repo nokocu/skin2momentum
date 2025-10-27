@@ -27,12 +27,17 @@ def fix_vmt(vmt_content, material_name, material_rel_path, csgo_materials_dir):
             if base_texture_file.exists():
                 basetexture = f"{material_dir}/{base_name}"
             else:
-                # Fallback to material name if base doesnt exist
-                texture_file = material_folder / f"{material_name}.vtf"
-                if texture_file.exists():
-                    basetexture = f"{material_dir}/{material_name}"
+                # Try _color suffix if no base texture
+                color_texture_file = material_folder / f"{base_name}_color.vtf"
+                if color_texture_file.exists():
+                    basetexture = f"{material_dir}/{base_name}_color"
                 else:
-                    basetexture = f"{material_dir}/{base_name}"
+                    # Fallback to material name if base doesnt exist
+                    texture_file = material_folder / f"{material_name}.vtf"
+                    if texture_file.exists():
+                        basetexture = f"{material_dir}/{material_name}"
+                    else:
+                        basetexture = f"{material_dir}/{base_name}"
         elif '/' in original_basetexture and original_basetexture.startswith('models/'):
             # Use original path if its a full path
             basetexture = original_basetexture
@@ -48,7 +53,12 @@ def fix_vmt(vmt_content, material_name, material_rel_path, csgo_materials_dir):
                 if base_texture_file.exists():
                     basetexture = f"{material_dir}/{base_name}"
                 else:
-                    basetexture = f"{material_dir}/{material_name}"
+                    # Try with _color suffix for gloves
+                    color_texture_file = material_folder / f"{base_name}_color.vtf"
+                    if color_texture_file.exists():
+                        basetexture = f"{material_dir}/{base_name}_color"
+                    else:
+                        basetexture = f"{material_dir}/{material_name}"
 
     else:
         # No basetexture found, try to find appropriate texture
@@ -62,7 +72,12 @@ def fix_vmt(vmt_content, material_name, material_rel_path, csgo_materials_dir):
             if base_texture_file.exists():
                 basetexture = f"{material_dir}/{base_name}"
             else:
-                basetexture = f"{material_dir}/{material_name}"
+                # Try with _color suffix
+                color_texture_file = material_folder / f"{base_name}_color.vtf"
+                if color_texture_file.exists():
+                    basetexture = f"{material_dir}/{base_name}_color"
+                else:
+                    basetexture = f"{material_dir}/{material_name}"
     
     # Handle bumpmap
     bumpmap = None
