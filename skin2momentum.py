@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import argparse
 from pathlib import Path
+from vmt_fixer import find_materials_from_smd, process_materials
 
 class Converter:
 
@@ -141,6 +142,7 @@ class Converter:
         qc_lines.append('$cdmaterials "models/weapons/"')
         qc_lines.append('$cdmaterials "models/weapons/v_models/knife_m9_bay/"')
         qc_lines.append('$cdmaterials "models/weapons/v_models/arms/glove_sporty/"')
+        qc_lines.append('$cdmaterials "models/weapons/v_models/arms/bare/"')
         qc_lines.append('$cdmaterials "models/weapons/v_models/arms/"')
         qc_lines.append('$cdmaterials "models/arms/"')
         qc_lines.append('$cdmaterials "materials/models/weapons/v_models/arms/glove_sporty/"')
@@ -242,6 +244,50 @@ class Converter:
             print(f"[copy_scripts] Error: {e}")
             return False
     
+    def fix_vmts(self):
+        """Fix VMT files"""
+        try:
+            # Find materials from SMD files in our output
+            all_materials = []
+            
+            # Weapon SMD
+            weapon_smd = self.output_dir / f"{Path(self.weapon_model).stem}.smd"
+            if weapon_smd.exists():
+                materials = find_materials_from_smd(weapon_smd)
+                all_materials.extend(materials)
+                print(f"[fix_vmts] Materials from weapon: {materials}")
+            
+            # Glove SMD
+            glove_smd = self.output_dir / f"{Path(self.glove_model).stem}.smd"
+            if glove_smd.exists():
+                materials = find_materials_from_smd(glove_smd)
+                all_materials.extend(materials)
+                print(f"[fix_vmts] Materials from gloves: {materials}")
+            
+            # Remove duplicates
+            unique_materials = list(set(all_materials))
+            print(f"[fix_vmts] Unique materials found: {unique_materials}")
+            
+            if not unique_materials:
+                print("[fix_vmts] No materials found")
+                return True
+            
+            # Source materials
+            source_materials_dir = self.data_dir / "materials"
+            
+            # Target materials
+            target_materials_dir = Path(self.output_dir).parent.parent / "materials"
+            
+            # Process using vmt_fixer
+            process_materials(source_materials_dir, target_materials_dir, unique_materials)
+            
+            print(f"[fix_vmts] Processed {len(unique_materials)} materials")
+            return True
+            
+        except Exception as e:
+            print(f"[fix_vmts] Error: {e}")
+            return False
+    
     def main(self):
         """Run conversion"""
         
@@ -295,6 +341,12 @@ class Converter:
                 script_success = self.copy_scripts()
                 if not script_success:
                     print("[main] Script copying failed")
+                
+                # Fix VMT materials
+                print("\n[main] 7. Fixing VMT materials")
+                vmt_success = self.fix_vmts()
+                if not vmt_success:
+                    print("[main] VMT fixing failed")
             
             print(f"[main] Result: {'SUCCESS' if success else 'FAILED'}")
             return success
