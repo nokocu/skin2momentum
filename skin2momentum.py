@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import argparse
 from pathlib import Path
-from vmt_fixer import find_materials_from_smd, process_materials
+from vmt_fixer import find_materials_from_smd, process_materials, get_cdmaterials_paths
 
 class Converter:
 
@@ -108,16 +108,13 @@ class Converter:
         
         return str(anim_qc), str(anim_output_dir)
     
-    def generate_qc(self, weapon_qc_path, glove_qc_path, anim_qc_path, output_qc_path):
+    def generate_qc(self, weapon_qc_path, glove_qc_path, anim_qc_path, output_qc_path, materials_list):
         """Generate QC (bodygroup approach)"""
         
         with open(weapon_qc_path, 'r', encoding='utf-8') as f:
             weapon_qc_content = f.read()
         
-        with open(glove_qc_path, 'r', encoding='utf-8') as f:
-            glove_qc_content = f.read()
-        
-        # todo (paths)
+        # asset paths
         qc_lines = []
         qc_lines.append(f'$modelname "weapons/{self.model_name}.mdl"')
         qc_lines.append('')
@@ -138,15 +135,11 @@ class Converter:
         qc_lines.append('$contents "solid"')
         qc_lines.append('$illumposition 0 0 0')
         
-        # TODO: material search paths
-        qc_lines.append('$cdmaterials "models/weapons/"')
-        qc_lines.append('$cdmaterials "models/weapons/v_models/knife_m9_bay/"')
-        qc_lines.append('$cdmaterials "models/weapons/v_models/arms/glove_sporty/"')
-        qc_lines.append('$cdmaterials "models/weapons/v_models/arms/bare/"')
-        qc_lines.append('$cdmaterials "models/weapons/v_models/arms/"')
-        qc_lines.append('$cdmaterials "models/arms/"')
-        qc_lines.append('$cdmaterials "materials/models/weapons/v_models/arms/glove_sporty/"')
-        qc_lines.append('$cdmaterials ""')
+        # Generate $cdmaterials paths automatically
+        source_materials_dir = self.data_dir / "materials"
+        cdmaterials_paths = get_cdmaterials_paths(source_materials_dir, materials_list)
+        for path in cdmaterials_paths:
+            qc_lines.append(f'$cdmaterials {path}')
         qc_lines.append('')
         
         # Use only knife bone definitions (with bonemerge and bonesaveframe)
@@ -163,8 +156,9 @@ class Converter:
         
         qc_lines.append('')
         
-        # Add animations using includemodel
-        qc_lines.append('$includemodel "weapons/v_knife_m9_bay_anim.mdl"')
+        # Use the weapon animation model
+        anim_model_name = Path(self.weapon_anim).stem
+        qc_lines.append(f'$includemodel "weapons/{anim_model_name}.mdl"')
         
         with open(output_qc_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(qc_lines))
@@ -278,7 +272,7 @@ class Converter:
             # Target materials
             target_materials_dir = Path(self.output_dir).parent.parent / "materials"
             
-            # Process using vmt_fixer
+            # Process using material_fixer
             process_materials(source_materials_dir, target_materials_dir, unique_materials)
             
             print(f"[fix_vmts] Processed {len(unique_materials)} materials")
@@ -322,6 +316,15 @@ class Converter:
             print(f"[main] Copied: {weapon_smd.name} -> {weapon_output.name}")
             print(f"[main] Copied: {glove_smd.name} -> {glove_output.name}")
             
+            # Find materials from SMDs for QC generation
+            all_materials = []
+            materials = find_materials_from_smd(weapon_output)
+            all_materials.extend(materials)
+            materials = find_materials_from_smd(glove_output)
+            all_materials.extend(materials)
+            unique_materials = list(set(all_materials))
+            print(f"[main] Materials found: {unique_materials}")
+            
             # Animations
             print("\n[main] 3. Processing animations")
             anim_qc, anim_dir = self.copy_animations(self.weapon_anim, temp_path, self.output_dir)
@@ -329,7 +332,7 @@ class Converter:
             # Generate QC
             print("\n[main] 4. Generating QC")
             final_qc = self.output_dir / f"{self.model_name}.qc"
-            self.generate_qc(weapon_qc, glove_qc, anim_qc, final_qc)
+            self.generate_qc(weapon_qc, glove_qc, anim_qc, final_qc, unique_materials)
             
             # Compile
             print("\n[main] 5. Compiling")
