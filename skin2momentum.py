@@ -27,7 +27,7 @@ class Converter:
         if self.weapon_type == "knife":
             self.model_name = "v_knife_t"
         elif self.weapon_type == "pistol":
-            self.model_name = "v_pistol_usp"
+            self.model_name = "v_pist_usp"
         else:
             raise ValueError(f"[init] provided type {self.weapon_type}. Must be 'knife' or 'pistol'")
         
@@ -77,25 +77,32 @@ class Converter:
 
     def copy_animations(self, anim_model, temp_dir, output_dir):
         """Copy animations"""
+
         if not anim_model.exists():
-            return None, None
+            alt_anim_model = anim_model.parent / anim_model.name.replace('_anim.mdl', '.mdl')
+            if alt_anim_model.exists():
+                anim_model = alt_anim_model
+                print(f"[copy_animations] Animation model found: {anim_model.name}")
+            else:
+                print(f"[copy_animations] No animation model found: {anim_model.name} or {alt_anim_model.name}")
+                return None, None, None
         
         anim_dir = temp_dir / "anim"
         anim_smd = self.decompile_model(anim_model, anim_dir)
 
         if not anim_smd:
-            return None, None
+            return None, None, None
         
         qc_files = list(anim_dir.glob("*.qc"))
         if not qc_files:
-            return None, None
+            return None, None, None
         
         anim_qc = qc_files[0]
         anim_name = anim_model.stem
         anim_smd_dir = anim_dir / f"{anim_name}_anims"
         
         if not anim_smd_dir.exists():
-            return str(anim_qc), None
+            return str(anim_qc), None, str(anim_model)
          
         # todo (paths)
         anim_output_dir = output_dir / f"{self.model_name}_anims"
@@ -106,9 +113,9 @@ class Converter:
             shutil.copy2(anim_file, dst)
             print(f"[copy_animations] Copied: {anim_file.name}")
         
-        return str(anim_qc), str(anim_output_dir)
+        return str(anim_qc), str(anim_output_dir), str(anim_model)
     
-    def generate_qc(self, weapon_qc_path, glove_qc_path, anim_qc_path, output_qc_path, materials_list):
+    def generate_qc(self, weapon_qc_path, glove_qc_path, anim_qc_path, output_qc_path, materials_list, actual_anim_model):
         """Generate QC (bodygroup approach)"""
         
         with open(weapon_qc_path, 'r', encoding='utf-8') as f:
@@ -157,13 +164,16 @@ class Converter:
         qc_lines.append('')
         
         # Use the weapon animation model
-        anim_model_name = Path(self.weapon_anim).stem
-        qc_lines.append(f'$includemodel "weapons/{anim_model_name}.mdl"')
+        if actual_anim_model:
+            anim_model_name = Path(actual_anim_model).stem
+            qc_lines.append(f'$includemodel "weapons/{anim_model_name}.mdl"')
         
         with open(output_qc_path, 'w', encoding='utf-8') as f:
             f.write('\n'.join(qc_lines))
         
         print(f"[generate_qc] QC generated: {output_qc_path}")
+        if actual_anim_model:
+            print(f"[generate_qc] Using animation model: {Path(actual_anim_model).name}")
     
     def compile_model(self, qc_path, work_dir):
         """Compile model"""
@@ -327,12 +337,12 @@ class Converter:
             
             # Animations
             print("\n[main] 3. Processing animations")
-            anim_qc, anim_dir = self.copy_animations(self.weapon_anim, temp_path, self.output_dir)
+            anim_qc, anim_dir, actual_anim_model = self.copy_animations(self.weapon_anim, temp_path, self.output_dir)
             
             # Generate QC
             print("\n[main] 4. Generating QC")
             final_qc = self.output_dir / f"{self.model_name}.qc"
-            self.generate_qc(weapon_qc, glove_qc, anim_qc, final_qc, unique_materials)
+            self.generate_qc(weapon_qc, glove_qc, anim_qc, final_qc, unique_materials, actual_anim_model)
             
             # Compile
             print("\n[main] 5. Compiling")
